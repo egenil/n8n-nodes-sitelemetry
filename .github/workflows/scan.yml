@@ -1,0 +1,37 @@
+name: n8n package scan
+
+# Runs n8n's community-package scan (the same checks n8n applies before
+# verifying a node) against a published version. It runs on Linux because the
+# scanner's tar extraction fails on Windows paths. Triggered by hand or after a
+# successful Release run.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Published version to scan (empty = latest)'
+        required: false
+        default: ''
+  workflow_run:
+    workflows: ['Release']
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scan the published package
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          # The registry needs a moment after a publish before the attestation is served.
+          sleep 30
+          SPEC="n8n-nodes-sitelemetry${VERSION:+@$VERSION}"
+          echo "Scanning $SPEC"
+          npx -y @n8n/scan-community-package "$SPEC"
