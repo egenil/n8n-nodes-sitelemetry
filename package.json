@@ -1,0 +1,69 @@
+{
+  "name": "n8n-nodes-sitelemetry",
+  "version": "0.1.0",
+  "description": "n8n community node for Sitelemetry website audits: security, SEO, AI visibility, integrations, accessibility, performance and full audits with normalized findings and plan-aware statuses.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "sitelemetry",
+    "website audit",
+    "security audit",
+    "seo audit",
+    "accessibility",
+    "performance",
+    "ai visibility"
+  ],
+  "license": "MIT",
+  "homepage": "https://sitelemetry.com",
+  "author": {
+    "name": "Sitelemetry",
+    "email": "support@sitelemetry.com",
+    "url": "https://sitelemetry.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egenil/n8n-nodes-sitelemetry.git"
+  },
+  "bugs": {
+    "url": "https://github.com/egenil/n8n-nodes-sitelemetry/issues"
+  },
+  "engines": {
+    "node": ">=20.15"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc && node scripts/copy-assets.mjs",
+    "dev": "tsc --watch",
+    "format": "prettier nodes credentials --write",
+    "lint": "eslint nodes credentials package.json",
+    "lint:fix": "eslint nodes credentials package.json --fix",
+    "pretest": "npm run build && npm run lint",
+    "test": "node --test \"test/*.test.mjs\"",
+    "prepublishOnly": "npm run build && npm run lint && node --test \"test/*.test.mjs\""
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/SitelemetryApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Sitelemetry/Sitelemetry.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/eslint-plugin-community-nodes": "^0.33.0",
+    "@types/node": "^22.20.4",
+    "@typescript-eslint/parser": "^8.35.0",
+    "eslint": "^9.29.0",
+    "eslint-plugin-n8n-nodes-base": "^2.0.0",
+    "n8n-workflow": "^2.16.0",
+    "prettier": "^3.6.0",
+    "typescript": "~5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}

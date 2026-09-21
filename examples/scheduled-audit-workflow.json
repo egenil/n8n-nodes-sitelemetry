@@ -1,0 +1,156 @@
+{
+  "name": "Weekly Sitelemetry security audit",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [1],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "name": "Every Monday 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "audit",
+        "operation": "run",
+        "target": "https://www.example.com",
+        "auditKind": "security",
+        "waitForResult": true,
+        "timeoutMinutes": 20,
+        "options": {}
+      },
+      "name": "Sitelemetry security audit",
+      "type": "n8n-nodes-sitelemetry.sitelemetry",
+      "typeVersion": 1,
+      "position": [260, 0],
+      "onError": "continueRegularOutput",
+      "notes": "Select your Sitelemetry API credential and set the target to a site you own or are authorized to test. With On Error set to continue, a blocked audit also reaches the email branch."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "status-completed",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "status-partial",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "partial",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "name": "Audit measured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [520, 0]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#website-audits"
+        },
+        "text": "=Sitelemetry {{ $json.kind }} audit of {{ $json.target }}: {{ $json.heading }}.\nScore: {{ $json.score === null ? 'not measured' : $json.score + '/100' + ($json.grade ? ' (' + $json.grade + ')' : '') }}\nFindings: {{ $json.total }} (critical {{ $json.counts.critical }}, high {{ $json.counts.high }}, medium {{ $json.counts.medium }}, low {{ $json.counts.low }}){{ $json.notMeasured.length ? '\\nNot measured (not passes): ' + $json.notMeasured.join('; ') : '' }}{{ $json.nextStep ? '\\n' + $json.nextStep : '' }}{{ $json.reportUrl ? '\\nFull report: ' + $json.reportUrl : '' }}",
+        "otherOptions": {}
+      },
+      "name": "Slack summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [800, -120],
+      "notes": "Select your Slack credential and channel."
+    },
+    {
+      "parameters": {
+        "fromEmail": "n8n@example.com",
+        "toEmail": "owner@example.com",
+        "subject": "=Sitelemetry audit not completed: {{ $json.heading || $json.status }}",
+        "emailFormat": "text",
+        "text": "=Target: {{ $json.target }}\nStatus: {{ $json.status }}{{ $json.reason ? ' (' + $json.reason + ')' : '' }}\n\n{{ $json.message || $json.error || '' }}\n{{ $json.plan && $json.plan.explanation ? '\\n' + $json.plan.explanation + '\\n' : '' }}{{ $json.nextStep ? '\\n' + $json.nextStep + '\\n' : '' }}{{ $json.status === 'running' && $json.jobId ? '\\nThe audit is still running as job ' + $json.jobId + '. Use the Get Status operation to fetch the result later.\\n' : '' }}\nPlan details: {{ $json.plan ? $json.plan.pricingUrl : 'https://sitelemetry.com/pricing?utm_source=n8n&utm_medium=integration' }}\nTarget verification and account settings: {{ $json.plan ? $json.plan.appUrl : 'https://sitelemetry.com/app' }}",
+        "options": {}
+      },
+      "name": "Email the explanation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [800, 140],
+      "notes": "Select your SMTP credential and set the addresses."
+    }
+  ],
+  "connections": {
+    "Every Monday 07:00": {
+      "main": [
+        [
+          {
+            "node": "Sitelemetry security audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sitelemetry security audit": {
+      "main": [
+        [
+          {
+            "node": "Audit measured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit measured?": {
+      "main": [
+        [
+          {
+            "node": "Slack summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email the explanation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

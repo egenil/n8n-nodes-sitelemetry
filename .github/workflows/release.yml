@@ -1,0 +1,50 @@
+name: Release
+
+# Publishing runs here rather than from a laptop because n8n's verification
+# scan (`npx @n8n/scan-community-package`) requires an npm provenance
+# attestation, and npm only issues one for a publish from a trusted CI runner
+# with an OIDC token. The scan then fetches the attested commit from this
+# public repository and lints it, so the tag must exist here too.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (for example v0.1.0)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # Required for npm to mint the provenance attestation.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          # >=20.15 per package.json engines; npm 9.5+ is needed for --provenance.
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      # prepublishOnly repeats these, but running them as their own steps makes
+      # a failure readable in the job log instead of buried in the publish step.
+      - run: npm run lint
+      - run: npm test
+
+      - run: npm publish --provenance --access public
+        env:
+          # Granular or automation token with publish rights for this package.
+          # A classic token with 2FA-on-publish cannot be used from CI.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
