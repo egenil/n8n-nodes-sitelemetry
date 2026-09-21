@@ -7,7 +7,7 @@ The package is published to npm by the owner with the owner's npm account. n8n d
 - Create the public GitHub repository named in `package.json` (`repository.url`, `bugs.url`, the `documentationUrl` of the credential and the codex file) and push this package to it. Keep `dist/` out of git (`.gitignore` already does); npm builds it on publish. The repository must stay **public**: n8n's verification scan downloads the attested commit from it and fails the package outright if it cannot.
 - The `author` block must carry a **non-empty `author.email`** — the scan's `valid-author` rule rejects the package without one, on both the source and the tarball. It is set to `support@sitelemetry.com`; npm shows it on the package page, so it has to be an address that is real and monitored.
 - Check `name`, `version` (start at `0.1.0`), `description` and `keywords`.
-- Create an npm **granular access token** (or automation token) with publish rights for this package and store it as the `NPM_TOKEN` repository secret. A classic token with 2FA-on-publish cannot be used from CI; releases are published by the workflow, not from a laptop (see section 2).
+- Authentication: **npm trusted publishing** (no token in the repository). On npmjs.com open the package → Settings → Trusted Publisher → GitHub Actions and enter organization `egenil`, repository `n8n-nodes-sitelemetry`, workflow filename `release.yml` (no environment). This page exists only after the first publish; 0.1.0 was published on 2026-09-21 with a one-time granular `NPM_TOKEN` secret, which is deleted afterwards (repository Settings → Secrets → Actions) together with the token on npmjs.com. Releases are published by the workflow, not from a laptop (see section 2).
 
 ## 2. Release checklist
 
