@@ -1,5 +1,5 @@
 // Start an audit (or resume one by job id) and poll it within the time budget.
-import { sleepWithAbort as sleepOrCancel } from 'n8n-workflow';
+import * as workflow from 'n8n-workflow';
 
 import { isRecord, McpHttpError, McpRpcError, type McpClient, type ToolResult } from './client';
 
@@ -33,11 +33,31 @@ export type RunOutcome =
 
 export type Sleep = (ms: number, signal?: AbortSignal) => Promise<void>;
 
-// n8n's helper owns the timer, because community nodes may not call setTimeout
-// themselves. It rejects with a cancellation error as soon as the signal aborts,
-// while this wait resolves instead: the polling loop re-checks the signal at the
-// top of every turn and reports the run as cancelled there. Any other rejection
-// is a real failure and is passed on.
+// n8n owns the timer, because community nodes may not call setTimeout themselves.
+// `sleepWithAbort` is the helper that rejects as soon as the signal aborts, but it
+// does not exist in every n8n-workflow release (2.39 ships plain `sleep` only), and
+// importing it blindly makes the node crash mid-poll with "is not a function". So
+// resolve it at load time and fall back to `sleep` raced against the abort signal,
+// which keeps both the timer and the cancellation inside n8n's own primitives.
+type SleepWithAbort = (ms: number, signal?: AbortSignal) => Promise<void>;
+const exported = workflow as unknown as Record<string, unknown>;
+const sleepOrCancel: SleepWithAbort =
+	typeof exported.sleepWithAbort === 'function'
+		? (exported.sleepWithAbort as SleepWithAbort)
+		: async (ms, signal) => {
+				if (!signal) return workflow.sleep(ms);
+				if (signal.aborted) return;
+				await Promise.race([
+					workflow.sleep(ms),
+					new Promise<void>((resolve) => {
+						signal.addEventListener('abort', () => resolve(), { once: true });
+					}),
+				]);
+			};
+
+// The wait resolves on abort instead of rejecting: the polling loop re-checks the
+// signal at the top of every turn and reports the run as cancelled there. Any other
+// rejection is a real failure and is passed on.
 export async function sleepWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
 	const failure = await sleepOrCancel(ms, signal).then(
 		() => undefined,

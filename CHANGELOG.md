@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 - 2026-09-23
+
+- Fix a crash while polling a running audit: the node imported `sleepWithAbort` from
+  `n8n-workflow`, which that package does not export in every release (n8n 2.39 ships
+  plain `sleep`). The import resolved to `undefined` and the run failed with
+  "sleepWithAbort is not a function" as soon as an audit needed a second poll, which is
+  the normal path when the node is used as an AI agent tool. The helper is now resolved
+  at load time and falls back to `sleep` raced against the abort signal, so both the
+  timer and the cancellation still come from n8n's own primitives and no timer API is
+  called directly.
+
 ## 0.1.0 - 2026-09-21
 
 Initial release.
