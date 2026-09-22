@@ -28,7 +28,9 @@ The tarball must not contain source maps of anything secret, `.env` files or API
 
 **Do not publish from a laptop.** `npm publish` run locally produces no npm provenance attestation, and the verification scan treats provenance as mandatory: it stops before linting and reports `Package was not published with npm provenance`. Such a version can never be verified — only a newer, properly published one can.
 
-Releases go through `.github/workflows/release.yml`, which runs `npm publish --provenance --access public` on a GitHub runner with `id-token: write`. Update `CHANGELOG.md`, bump the version and push the tag; the tag push starts the workflow:
+Releases go through `.github/workflows/release.yml`, which runs `npm stage publish --provenance --access public` on a GitHub runner with `id-token: write`.
+
+npm creates a trusted publisher with the **stage publish** permission only, so a plain `npm publish` from CI is refused with `403 OIDC permission denied for this action` (seen on 2026-09-23 for 0.1.1). Staging uploads the signed, provenance-attested tarball and parks it; a maintainer then approves it at <https://www.npmjs.com/settings/ozandikici/staged-packages> with their own 2FA and the version goes live. Nothing reaches the registry without that human step. The alternative is to tick "Allow npm publish" on the trusted publisher in the package settings and go back to `npm publish`. Update `CHANGELOG.md`, bump the version and push the tag; the tag push starts the workflow:
 
 ```sh
 npm version patch|minor|major   # creates the commit and the vX.Y.Z tag

@@ -52,4 +52,16 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-      - run: npm publish --provenance --access public
+      # npm creates a trusted publisher with the "stage publish" permission only:
+      # a plain `npm publish` from CI is refused with
+      # "403 OIDC permission denied for this action". `npm stage publish` uploads the
+      # signed, provenance-attested tarball and parks it as a staged version; a
+      # maintainer then approves it on npmjs.com (Staged Packages) with their own 2FA
+      # and it goes live. Nothing is published without that human step.
+      - run: npm stage publish --provenance --access public
+
+      - name: Where to approve
+        run: |
+          {
+            echo "Staged on npm. Approve it at https://www.npmjs.com/settings/ozandikici/staged-packages to make the version public."
+          } >> "$GITHUB_STEP_SUMMARY"
